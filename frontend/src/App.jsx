@@ -28,23 +28,51 @@ function App()
                 setStream(localStream);
 
                 if (myVideo.current)
-                {
-                    myVideo.current.srcObject = localStream;
-                }
+                {myVideo.current.srcObject = localStream;}
             })
             .catch((error) =>
-            {
-                console.error("getUserMedia error:", error);
-            });
+            {console.error("getUserMedia error:", error);});
     }, []);
 
     useEffect(() =>
     {
         if (myVideo.current && stream)
-        {
-            myVideo.current.srcObject = stream;
-        }
+        {myVideo.current.srcObject = stream;}
     }, [stream]);
+
+    const peerSetup = (peer) =>
+    {
+        try
+        {
+            peer.on("signal", (data) =>
+            {
+                const sdpString = JSON.stringify(data);
+                setLocalSignal(sdpString);
+            });
+
+            peer.on("stream", (remoteStream) =>
+            {
+                if (otherUserVideo.current)
+                {
+                    otherUserVideo.current.srcObject = remoteStream;
+                }
+            });
+
+            peer.on("connect", () =>
+            {
+                setConnected(true);
+            });
+
+            peer.on("error", (error) =>
+            {
+                console.error("Peer error:", error);
+            });
+
+            connectionRef.current = peer;
+        }
+        catch (error)
+        {console.error("peerSetup error:", error);}
+    }
 
     const createOffer = () =>
     {
@@ -57,31 +85,7 @@ function App()
                 stream: stream
             });
 
-        peer.on("signal", (data) =>
-        {
-            const sdpString = JSON.stringify(data);
-            setLocalSignal(sdpString);
-        });
-
-        peer.on("stream", (remoteStream) =>
-        {
-           if (otherUserVideo.current)
-           {
-               otherUserVideo.current.srcObject = remoteStream;
-           }
-        });
-
-        peer.on("connect", () =>
-        {
-           setConnected(true);
-        });
-
-        peer.on("error", (error) =>
-        {
-           console.error("Peer error:", error);
-        });
-
-        connectionRef.current = peer;
+        peerSetup(peer);
         setIsInitiator(true);
     }
 
@@ -98,6 +102,7 @@ function App()
       }
       catch (error)
       {
+          console.error("acceptOfferAndCreateAnswer json error:", error);
           return;
       }
 
@@ -108,32 +113,8 @@ function App()
              stream: stream
           });
 
-      peer.on("signal", (data) =>
-      {
-         const sdpString = JSON.stringify(data);
-         setLocalSignal(sdpString);
-      });
-
-      peer.on("stream", (remoteStream) =>
-      {
-          if (otherUserVideo.current)
-          {
-              otherUserVideo.current.srcObject = remoteStream;
-          }
-      });
-
-      peer.on("connect", () =>
-      {
-         setConnected(true);
-      });
-
-      peer.on("error", (error) =>
-      {
-         console.error("Peer error:", error);
-      });
-
+      peerSetup(peer);
       peer.signal(remote);
-      connectionRef.current = peer;
       setIsInitiator(false);
     };
 
@@ -149,6 +130,7 @@ function App()
         }
         catch (error)
         {
+            console.error("finishHandshakeWithAnswer json error:", error);
             return;
         }
 
@@ -157,56 +139,79 @@ function App()
 
     const leaveCall = () =>
     {
-        if (connectionRef.current)
+        try
         {
-            connectionRef.current.destroy();
-            connectionRef.current = null;
-        }
+            if (connectionRef.current)
+            {
+                connectionRef.current.destroy();
+                connectionRef.current = null;
+            }
 
-        setConnected(false);
-        setIsInitiator(null);
-        setLocalSignal("");
-        setRemoteSignal("");
-        setHasRemoteSignal(false);
+            setConnected(false);
+            setIsInitiator(null);
+            setLocalSignal("");
+            setRemoteSignal("");
+            setHasRemoteSignal(false);
 
-        if (otherUserVideo.current)
-        {
-            otherUserVideo.current.srcObject = null;
+            if (otherUserVideo.current)
+            {otherUserVideo.current.srcObject = null;}
         }
+        catch (error)
+        {console.error("leaveCall error:", error);}
     };
 
     const compressSignal = (str) =>
     {
-        const compressed = pako.deflate(str);
-        return btoa(String.fromCharCode(...compressed));
+        try
+        {
+            const compressed = pako.deflate(str);
+            return btoa(String.fromCharCode(...compressed));
+        }
+        catch (error)
+        {console.error("compressSignal error:", error);}
     };
 
     const decompressSignal = (b64) =>
     {
-        const binary = atob(b64);
-        const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-        return pako.inflate(bytes, {to: "string"});
+        try
+        {
+            const binary = atob(b64);
+            const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+            return pako.inflate(bytes, {to: "string"});
+        }
+        catch (error)
+        {console.error("decompressSignal error:", error);}
     };
 
     const createShareUrl = () =>
     {
-        if (!localSignal) return "";
-        const compressed = compressSignal(localSignal);
-        const encoded = encodeURIComponent(compressed);
-        return `${window.location.origin}?sdp=${encoded}`;
+        try
+        {
+            if (!localSignal) return "";
+            const compressed = compressSignal(localSignal);
+            const encoded = encodeURIComponent(compressed);
+            return `${window.location.origin}?sdp=${encoded}`;
+        }
+        catch (error)
+        {console.error("createShareUrl error:", error);}
     };
 
     useEffect(() =>
     {
-        const params = new URLSearchParams(window.location.search);
-        const sdp = params.get("sdp");
-
-        if (sdp)
+        try
         {
-            const raw = decodeURIComponent(sdp);
-            setRemoteSignal(raw);
-            setHasRemoteSignal(true);
+            const params = new URLSearchParams(window.location.search);
+            const sdp = params.get("sdp");
+
+            if (sdp)
+            {
+                const raw = decodeURIComponent(sdp);
+                setRemoteSignal(raw);
+                setHasRemoteSignal(true);
+            }
         }
+        catch (error)
+        {console.error("sdp error:", error);}
     }, []);
 
     const handleCopy = () =>
@@ -303,7 +308,7 @@ function App()
 
                                 <div style={{ margin: "10px 0" }}>
                                     <button className="copy-btn" onClick={handleCopy}>
-                                        {copied ? "Copied" : "Copy SDR to clipboard"}
+                                        {copied ? "Copied" : "Copy SDP to clipboard"}
                                     </button>
                                 </div>
 
