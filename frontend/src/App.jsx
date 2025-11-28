@@ -46,16 +46,13 @@ function App()
         {
             peer.on("signal", (data) =>
             {
-                const sdpString = JSON.stringify(data);
-                setLocalSignal(sdpString);
+                setLocalSignal(JSON.stringify(data));
             });
 
             peer.on("stream", (remoteStream) =>
             {
                 if (otherUserVideo.current)
-                {
-                    otherUserVideo.current.srcObject = remoteStream;
-                }
+                {otherUserVideo.current.srcObject = remoteStream;}
             });
 
             peer.on("connect", () =>
@@ -94,11 +91,16 @@ function App()
       if (!stream || !remoteSignal) return;
 
       let remote;
-
       try
       {
-          const json = decompressSignal(remoteSignal);
-          remote = JSON.parse(json);
+          const cleanedRemoteSignal = remoteSignal.trim();
+          const jsonString = decompressSignal(cleanedRemoteSignal);
+          if (!jsonString)
+          {
+              console.error("acceptOfferAndCreateAnswer: Decompressed signal is empty.");
+              return;
+          }
+          remote = JSON.parse(jsonString.toString());
       }
       catch (error)
       {
@@ -125,8 +127,14 @@ function App()
         let remote;
         try
         {
-            const json = decompressSignal(remoteSignal);
-            remote = JSON.parse(json);
+            const cleanedRemoteSignal = remoteSignal.trim();
+            const jsonString = decompressSignal(cleanedRemoteSignal);
+            if (!jsonString)
+            {
+                console.error("finishHandshakeWithAnswer: Decompressed signal is empty.");
+                return;
+            }
+            remote = JSON.parse(jsonString.toString());
         }
         catch (error)
         {
@@ -180,7 +188,10 @@ function App()
             return pako.inflate(bytes, {to: "string"});
         }
         catch (error)
-        {console.error("decompressSignal error:", error);}
+        {
+            console.error("decompressSignal error:", error);
+            return ""
+        }
     };
 
     const createShareUrl = () =>
