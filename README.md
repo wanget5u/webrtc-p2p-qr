@@ -14,3 +14,33 @@ The entire process consists of three steps:
     Device A scans the QR code with the ANSWER, completing the connection setup.
 
 After the offer and answer are exchanged, the devices connect directly, establishing a P2P connection with full bidirectional audio and video communication.
+
+## Setup
+1. Clone and Install Dependencies
+```
+# Navigate to the backend folder
+cd webrtc-p2p-qr-backend
+npm install
+
+# Navigate to the frontend folder
+cd ../frontend
+npm install
+```
+
+2. Generate SSL Certificates (Required for Camera Access)
+
+    - In the root of your backend folder, create/run your gencert.js script: ```node gencert.js```
+    - Verify that key.pem and cert.pem now exist in your folder.
+
+
+3. Build the Frontend
+```
+# Inside the /frontend folder
+npm run build
+```
+
+4. Start the Server
+```
+# Inside the /webrtc-p2p-qr-backend folder
+npm run dev
+```
